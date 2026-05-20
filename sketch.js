@@ -41,4 +41,71 @@ function setup() {
   player.collider = "dynamic";  // Needed for collision detection
 }
 
+function draw() {
+ background(0);  // Clear screen to black 
 
+ if (gameState === "title") {
+   showTitleScreen();
+ } else if (gameState === "play") {
+   runGameplay();
+ } else if (gameState === "over") {
+   showGameOverScreen();
+ }
+}
+
+function showTitleScreen() {
+ fill("white");
+ textAlign(CENTER);
+
+ textSize(48);
+ text("STELLAR SIEGE", width / 2, 180);
+
+ textSize(16);
+ text("High Score: " + highScore, width / 2, 240);
+
+ if (frameCount % 60 < 30) {
+   text("PRESS ENTER TO PLAY", width / 2, 310);
+ }
+}
+
+function showGameOverScreen() {
+ fill("red");
+ textAlign(CENTER);
+ textSize(48);
+ text("GAME OVER", width / 2, 180);
+
+
+ fill("white");
+ textSize(20);
+ text("Score: " + score,         width / 2, 260);
+ text("Wave reached: " + currentWave, width / 2, 295);
+
+ textSize(16);
+ if (frameCount % 60 < 30) {
+   text("PRESS ENTER TO RESTART", width / 2, 360);
+ }
+}
+
+function runGameplay() {
+
+ // Function to move a player (W,A,S.D)
+ movePlayer();
+
+ // Function to shoot the gun
+ handlePlayerShooting();
+
+ // Function to spawn in enimies randomly
+ spawnEnemies();
+
+ // Controls enemy shooting and moving
+ moveEnemiesAndShoot();
+
+ // Moves bullets
+ moveBullets();
+
+ // Checks to see if someone got hit
+ checkCollisions();
+
+ // User interface displaying data and sheilds etc
+ drawHUD();
+}
