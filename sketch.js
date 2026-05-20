@@ -6,7 +6,9 @@ let score = 0;
 let highScore = 0;
 let currentWave = 1;
 let shieldHP = 3;        
-
+let bulletsRemaining = 25;       
+let bulletRecharge = 0;     
+let bulletRechargeInterval = 288;
 
 // Sprites
 
@@ -23,7 +25,7 @@ let enemyFireTimer  = 0;
 function preload() {
   // load characters here (note to self:)$
 
-}=
+}
 function setup() {
   createCanvas(800, 500); 
 
@@ -109,3 +111,204 @@ function runGameplay() {
  // User interface displaying data and sheilds etc
  drawHUD();
 }
+
+//player movement and speed
+function movePlayer() {
+ let speed = 4;
+
+ if (kb.pressing("up")   || kb.pressing("w")) player.y -= speed;
+ if (kb.pressing("down") || kb.pressing("s")) player.y += speed;
+
+// to make sure that a player cant leave the visual field
+ player.y = constrain(player.y, 20, height - 20);
+}
+
+let shootCooldown = 0;
+
+// adds limit so user can only fire 25 bullets every minute
+function handlePlayerShooting() {
+  if (shootCooldown > 0) shootCooldown--;
+
+  // rechares one bullet every 144 frames so you get a bullet every ~2.5 seconds
+  bulletRecharge++;
+  if (bulletRecharge >= bulletRechargeInterval) {
+    bulletRecharge = 0;
+    if (bulletsRemaining < 25) bulletsRemaining++; 
+  }
+
+  // only fire if cooldown is ready + bullets are available
+  if (kb.pressing("space") && shootCooldown === 0 && bulletsRemaining > 0) {
+    let b    = new playerBullets.Sprite();
+    b.x      = player.x + 25;
+    b.y      = player.y;
+    b.w      = 14;
+    b.h      = 5;
+    b.color  = "yellow";
+    b.collider = "dynamic";
+
+    shootCooldown = 15;
+    bulletsRemaining--; 
+  }
+}
+
+ if (kb.pressing("space") && shootCooldown === 0) {
+   let b    = new playerBullets.Sprite();
+   b.x      = player.x + 25;  // Start just in front of the ship
+   b.y      = player.y;
+   b.w      = 14;
+   b.h      = 5;
+   b.color  = "yellow";
+   b.collider = "dynamic";
+
+
+   shootCooldown = 15;  // ~0.25 seconds before you can fire again
+ }
+
+function spawnEnemies() {
+ enemySpawnTimer++;
+
+ let spawnInterval = max(30, 90 - (currentWave * 10));
+
+ if (enemySpawnTimer >= spawnInterval) {
+   enemySpawnTimer = 0;  
+
+//gives foes a random start position
+   let e    = new enemies.Sprite();
+   e.x      = width + 20;          
+   e.y      = random(40, height - 40); 
+   e.w      = 36;
+   e.h      = 28;
+   e.color  = "red";
+   e.collider = "dynamic";
+ }
+}
+
+function moveEnemiesAndShoot() {
+ let enemySpeed = 1 + (currentWave * 0.3);  // Gets faster each wave
+
+ enemyFireTimer++;
+ let fireInterval = max(40, 120 - (currentWave * 10));  // Fire more often each wave
+
+
+ for (let e of enemies) {
+   // Move left
+   e.x -= enemySpeed;
+
+   if (e.x < 0) {
+     e.remove();
+     shieldHP--;
+     checkShieldDepleted();
+   }
+
+   if (enemyFireTimer >= fireInterval) {
+     let b    = new enemyBullets.Sprite();
+     b.x      = e.x - 20;
+     b.y      = e.y;
+     b.w      = 12;
+     b.h      = 5;
+     b.color  = "orange";
+     b.collider = "dynamic";
+   }
+ }
+
+ // Reset fire timer after one round of shots
+ if (enemyFireTimer >= fireInterval) enemyFireTimer = 0;
+}
+
+function moveBullets() {
+ for (let b of playerBullets) {
+   b.x += 8;
+   if (b.x > width + 20) b.remove();
+ }
+
+
+ for (let b of enemyBullets) {
+   b.x -= 6;
+   if (b.x < -20) b.remove();
+ }
+}
+
+function checkCollisions() {
+
+
+ // Player bullet hits an enemy
+ playerBullets.overlaps(enemies, (bullet, enemy) => {
+   bullet.remove();
+   enemy.remove();
+   score += 100;
+   checkWaveAdvance();
+ });
+
+
+ // Enemy bullet hits the player
+ enemyBullets.overlaps(player, (bullet, p) => {
+   bullet.remove();
+   shieldHP--;
+   checkShieldDepleted();
+ });
+}
+
+let enemiesDestroyedThisWave = 0;
+let enemiesToAdvance = 8;  // Destroy 8 enemies to advance
+
+
+function checkWaveAdvance() {
+ enemiesDestroyedThisWave++;
+
+
+ if (enemiesDestroyedThisWave >= enemiesToAdvance) {
+   currentWave++;
+   enemiesDestroyedThisWave = 0;
+   enemiesToAdvance += 2;  // every wave requires more kills
+ }
+}
+
+function checkShieldDepleted() {
+ if (shieldHP <= 0) {
+   if (score > highScore) highScore = score;  // save high score
+   gameState = "over";
+ }
+}
+
+
+ function drawHUD() {
+  fill("white");
+  noStroke();
+  textAlign(LEFT);
+
+  textSize(16);
+  text("Score: " + score, 10, 25);
+  text("Wave:  " + currentWave, 10, 48);
+  text("Shield: " + " ".repeat(shieldHP), 10, height - 10);
+  text("Ammo: " + bulletsRemaining + " / 25", 10, 71);
+}
+
+function keyPressed() {
+bulletsRemaining = 25;
+bulletRechargeTimer = 0;
+
+ if (key === "Enter") {
+   if (gameState === "title") {
+     // Start the game
+     gameState = "play";
+   }
+
+   else if (gameState === "over") {
+     // Reset everything and restart
+     score                    = 0;
+     currentWave              = 1;
+     shieldHP                 = 3;
+     enemiesDestroyedThisWave = 0;
+     enemiesToAdvance         = 8;
+     enemySpawnTimer          = 0;
+     enemyFireTimer           = 0;
+     enemies.removeAll();
+     playerBullets.removeAll();
+     enemyBullets.removeAll();
+     player.x = 80;
+     player.y = height / 2;
+     gameState = "play";
+   }
+ }
+}
+
