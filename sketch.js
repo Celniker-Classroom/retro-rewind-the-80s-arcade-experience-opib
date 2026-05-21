@@ -22,7 +22,7 @@ let enemyFireTimer  = 0;
 
 
 function preload() {
-  playerImg = loadImage("Main Sprite.gif");
+  playerImg = loadImage("Main Sprite.png");
 }
 
 
@@ -270,8 +270,6 @@ function checkShieldDepleted() {
   text("Shield: " + " ".repeat(shieldHP), 10, height - 10);
   text("Ammo: " + bulletsRemaining + " / 25", 10, 71);
 }
-bulletsRemaining = 25;
-bulletRechargeTimer = 0;
 
 function keyPressed() {
 
@@ -286,6 +284,8 @@ function keyPressed() {
      score                    = 0;
      currentWave              = 1;
      shieldHP                 = 3;
+     bulletsRemaining         = 25;   // ADD
+     bulletRecharge           = 0;
      enemiesDestroyedThisWave = 0;
      enemiesToAdvance         = 8;
      enemySpawnTimer          = 0;
