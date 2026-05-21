@@ -22,7 +22,7 @@ let enemyFireTimer  = 0;
 
 
 function preload() {
-  playerImg = loadImage("Main Sprite.png");
+  playerImg = loadImage("player.png");   
 }
 
 
@@ -35,11 +35,11 @@ function setup() {
 
  
   player        = new Sprite();
+  player.image  = playerImg;
   player.x      = 80;
   player.y      = height / 2;
-  player.w      = 40;
-  player.h      = 30;
-  player.image  = playerImg;
+  player.w      = 80;  
+  player.h      = 50;   
   player.collider = "dynamic";
 }
 
