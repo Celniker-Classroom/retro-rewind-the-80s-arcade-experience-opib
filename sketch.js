@@ -1,6 +1,5 @@
 let gameState = "title";
 
-
 // Scores
 let score = 0;
 let highScore = 0;
@@ -8,11 +7,11 @@ let currentWave = 1;
 let shieldHP = 3;        
 let bulletsRemaining = 25;       
 let bulletRecharge = 0;     
-let bulletRechargeInterval = 288;
+let bulletRechargeInterval = 144;
 
 // Sprites
 
-let player;
+let playerImg;
 let enemies;               // enemy sprites
 let playerBullets;         // bullets
 let enemyBullets;          // bullets enemies fire
@@ -23,9 +22,10 @@ let enemyFireTimer  = 0;
 
 
 function preload() {
-  // load characters here (note to self:)$
-
+  playerImg = loadImage("Main Sprite.gif");
 }
+
+
 function setup() {
   createCanvas(800, 500); 
 
@@ -35,12 +35,12 @@ function setup() {
 
  
   player        = new Sprite();
-  player.x      = 80;           // Start near the left edge
-  player.y      = height / 2;   // Start vertically centered
+  player.x      = 80;
+  player.y      = height / 2;
   player.w      = 40;
   player.h      = 30;
-  player.color  = "cyan";
-  player.collider = "dynamic";  // Needed for collision detection
+  player.image  = playerImg;
+  player.collider = "dynamic";
 }
 
 function draw() {
@@ -151,18 +151,6 @@ function handlePlayerShooting() {
   }
 }
 
- if (kb.pressing("space") && shootCooldown === 0) {
-   let b    = new playerBullets.Sprite();
-   b.x      = player.x + 25;  // Start just in front of the ship
-   b.y      = player.y;
-   b.w      = 14;
-   b.h      = 5;
-   b.color  = "yellow";
-   b.collider = "dynamic";
-
-
-   shootCooldown = 15;  // ~0.25 seconds before you can fire again
- }
 
 function spawnEnemies() {
  enemySpawnTimer++;
@@ -282,10 +270,10 @@ function checkShieldDepleted() {
   text("Shield: " + " ".repeat(shieldHP), 10, height - 10);
   text("Ammo: " + bulletsRemaining + " / 25", 10, 71);
 }
-
-function keyPressed() {
 bulletsRemaining = 25;
 bulletRechargeTimer = 0;
+
+function keyPressed() {
 
  if (key === "Enter") {
    if (gameState === "title") {
@@ -294,7 +282,7 @@ bulletRechargeTimer = 0;
    }
 
    else if (gameState === "over") {
-     // Reset everything and restart
+     // Reset everything
      score                    = 0;
      currentWave              = 1;
      shieldHP                 = 3;
