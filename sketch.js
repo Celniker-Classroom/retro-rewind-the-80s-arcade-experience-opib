@@ -12,6 +12,7 @@ let bulletRechargeInterval = 144;
 // Sprites
 
 let playerImg;
+let enemyImg; 
 let enemies;               // enemy sprites
 let playerBullets;         // bullets
 let enemyBullets;          // bullets enemies fire
@@ -22,7 +23,8 @@ let enemyFireTimer  = 0;
 
 
 function preload() {
-  playerImg = loadImage("player.png");   
+  playerImg = loadImage("player.png");  
+  enemyImg  = loadImage("enemy.png"); 
 }
 
 
@@ -164,9 +166,9 @@ function spawnEnemies() {
    let e    = new enemies.Sprite();
    e.x      = width + 20;          
    e.y      = random(40, height - 40); 
-   e.w      = 36;
-   e.h      = 28;
-   e.color  = "red";
+   e.w        = 60;          
+   e.h        = 40;           
+   e.image    = enemyImg;    
    e.collider = "dynamic";
  }
 }
