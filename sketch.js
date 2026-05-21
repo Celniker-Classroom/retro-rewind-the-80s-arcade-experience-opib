@@ -40,9 +40,10 @@ function setup() {
   player.image  = playerImg;
   player.x      = 80;
   player.y      = height / 2;
-  player.w      = 80;  
-  player.h      = 50;   
+  player.w      = 80;
+  player.h      = 50;
   player.collider = "dynamic";
+  player.gravityScale = 0;  
 }
 
 function draw() {
@@ -129,6 +130,7 @@ let shootCooldown = 0;
 
 // adds limit so user can only fire 25 bullets every minute
 function handlePlayerShooting() {
+  b.gravityScale = 0
   if (shootCooldown > 0) shootCooldown--;
 
   // rechares one bullet every 144 frames so you get a bullet every ~2.5 seconds
@@ -156,6 +158,7 @@ function handlePlayerShooting() {
 
 function spawnEnemies() {
  enemySpawnTimer++;
+ e.gravityScale = 0;
 
  let spawnInterval = max(30, 90 - (currentWave * 10));
 
@@ -174,7 +177,8 @@ function spawnEnemies() {
 }
 
 function moveEnemiesAndShoot() {
- let enemySpeed = 1 + (currentWave * 0.3);  // Gets faster each wave
+  b.gravityScale = 0
+  let enemySpeed = 1 + (currentWave * 0.3);  // Gets faster each wave
 
  enemyFireTimer++;
  let fireInterval = max(40, 120 - (currentWave * 10));  // Fire more often each wave
@@ -269,7 +273,7 @@ function checkShieldDepleted() {
   textSize(16);
   text("Score: " + score, 10, 25);
   text("Wave:  " + currentWave, 10, 48);
-  text("Shield: " + " ".repeat(shieldHP), 10, height - 10);
+  text("Shield: " + "♥ ".repeat(max(0, shieldHP)), 10, height - 10);
   text("Ammo: " + bulletsRemaining + " / 25", 10, 71);
 }
 
