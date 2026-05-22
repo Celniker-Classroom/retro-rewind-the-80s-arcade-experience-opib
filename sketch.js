@@ -15,6 +15,7 @@ let waveTimerMax = 1200;
 
 // bomb usage 
 let bombCount = 3;
+let explosions = [];
 
 // sprites
 let playerImg;
@@ -116,6 +117,8 @@ function runGameplay() {
 
   checkCollisions();
 
+  updateAndDrawExplosions();
+
   // user interface displaying data and shields etc
   drawHUD();
 }
@@ -172,8 +175,8 @@ function handlePlayerShooting() {
 
 function useBomb() {
   if (bombCount <= 0) return;  // no bombs left, do nothing
-
   bombCount--;
+   for (let e of enemies) createExplosion(e.x, e.y);
 
   // Remove every enemy and every enemy bullet instantly
   enemies.removeAll();
@@ -217,6 +220,7 @@ function moveEnemiesAndShoot() {
 
     // If enemy reaches left edge, damage shield
     if (e.x < 0) {
+      createExplosion(e.x, e.y);
       e.remove();
       shieldHP--;
       checkShieldDepleted();
@@ -257,6 +261,7 @@ function moveBullets() {
 function checkCollisions() {
   // Player bullet hits an enemy
   playerBullets.overlaps(enemies, (bullet, enemy) => {
+    createExplosion(enemy.x, enemy.y);
     bullet.remove();
     enemy.remove();
     score += 100;
@@ -295,6 +300,35 @@ function drawHUD() {
   text("Shield: " + "♥ ".repeat(max(0, shieldHP)), 10, height - 10);
 }
 
+function createExplosion(x, y) {
+  let numParticles = 8;
+  for (let i = 0; i < numParticles; i++) {
+    let angle = (TWO_PI / numParticles) * i;
+    let speed = random(1.5, 4);
+    explosions.push({
+      x: x, y: y,
+      vx: cos(angle) * speed,
+      vy: sin(angle) * speed,
+      life: 30, maxLife: 30,
+      size: random(4, 9)
+    });
+  }
+}
+
+function updateAndDrawExplosions() {
+  noStroke();
+  for (let i = explosions.length - 1; i >= 0; i--) {
+    let p = explosions[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life--;
+    let alpha = map(p.life, 0, p.maxLife, 0, 255);
+    let g     = map(p.life, 0, p.maxLife, 0, 180);
+    fill(255, g, 0, alpha);
+    circle(p.x, p.y, p.size);
+    if (p.life <= 0) explosions.splice(i, 1);
+  }
+}
 
 function keyPressed() {
   // B key uses a bomb
@@ -318,6 +352,7 @@ function keyPressed() {
       bombCount                = 3;
       enemySpawnTimer          = 0;
       enemyFireTimer           = 0;
+      explosions = [];
       enemies.removeAll();
       playerBullets.removeAll();
       enemyBullets.removeAll();
