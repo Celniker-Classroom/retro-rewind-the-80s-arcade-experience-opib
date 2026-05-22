@@ -9,7 +9,14 @@ let bulletsRemaining = 25;
 let bulletRecharge = 0;     
 let bulletRechargeInterval = 144;
 
-// Sprites
+// Wave timer (new wave every 20 seconds)
+let waveTimer = 0;
+let waveTimerMax = 1200;
+
+// bomb usage 
+let bombCount = 3;
+
+// sprites
 let playerImg;
 let enemyImg; 
 let enemies;               // enemy sprites
@@ -33,14 +40,12 @@ function setup() {
   playerBullets = new Group();
   enemyBullets  = new Group();
 
-  player             = new Sprite();
-  player.image       = playerImg;
-  player.x           = 80;
-  player.y           = height / 2;
-  player.scale       = 0.5;
-  player.w           = 40;    
-  player.h           = 25;   
-  player.collider    = "dynamic";
+  player              = new Sprite();
+  player.scale        = 0.5;
+  player.image        = playerImg;
+  player.x            = 80;
+  player.y            = height / 2;
+  player.collider     = "dynamic";
   player.gravityScale = 0;  
 }
 
@@ -93,48 +98,56 @@ function showGameOverScreen() {
 
 
 function runGameplay() {
+  // Advance wave every 20 seconds
+  tickWaveTimer();
+
   // Function to move a player (W,A,S,D)
   movePlayer();
 
-  // Function to shoot the gun
   handlePlayerShooting();
 
-  // Function to spawn in enemies randomly
   spawnEnemies();
 
-  // Controls enemy shooting and moving
   moveEnemiesAndShoot();
 
-  // Moves bullets
+  // moves bullets
   moveBullets();
 
-  // Checks to see if someone got hit
+
   checkCollisions();
 
-  // User interface displaying data and shields etc
+  // user interface displaying data and shields etc
   drawHUD();
 }
 
+function tickWaveTimer() {
+  waveTimer++;
 
-// Player movement and speed
+  if (waveTimer >= waveTimerMax) {
+    waveTimer = 0;       // reset timer
+    currentWave++;       // advance wave
+  }
+}
+
+
+// player movement and speed
 function movePlayer() {
   let speed = 4;
 
   if (kb.pressing("up")   || kb.pressing("w")) player.y -= speed;
   if (kb.pressing("down") || kb.pressing("s")) player.y += speed;
 
-  // Keep player inside the canvas
+
   player.y = constrain(player.y, 20, height - 20);
 }
 
 
 let shootCooldown = 0;
 
-// Adds limit so user can only fire 25 bullets, recharging over time
+// bullet limit (25)
 function handlePlayerShooting() {
   if (shootCooldown > 0) shootCooldown--;
 
-  // Recharges one bullet every 144 frames (~2.5 seconds)
   bulletRecharge++;
   if (bulletRecharge >= bulletRechargeInterval) {
     bulletRecharge = 0;
@@ -150,43 +163,56 @@ function handlePlayerShooting() {
     b.h            = 5;
     b.color        = "yellow";
     b.collider     = "dynamic";
-    b.gravityScale = 0;   // must be after b is created
+    b.gravityScale = 0;
 
     shootCooldown = 15;
     bulletsRemaining--; 
   }
 }
 
+function useBomb() {
+  if (bombCount <= 0) return;  // no bombs left, do nothing
+
+  bombCount--;
+
+  // Remove every enemy and every enemy bullet instantly
+  enemies.removeAll();
+  enemyBullets.removeAll();
+
+  // Bonus points for using a bomb
+  score += 200;
+}
 
 function spawnEnemies() {
   enemySpawnTimer++;
 
-  let spawnInterval = max(30, 90 - (currentWave * 10));
+  // Starting at 120 frames (2 sec) instead of 90 so wave 1 is easier
+  let spawnInterval = max(20, 120 - (currentWave * 15));
 
   if (enemySpawnTimer >= spawnInterval) {
     enemySpawnTimer = 0;  
 
-    // Gives enemies a random vertical start position
     let e          = new enemies.Sprite();
     e.x            = width + 20;          
     e.y            = random(40, height - 40); 
-    e.w            = 14;
-    e.h            = 4;     
     e.scale        = 0.4;
-    e.image        = enemyImg;    
+    e.image        = enemyImg;
     e.collider     = "dynamic";
     e.gravityScale = 0;  
   }
 }
 
+
 function moveEnemiesAndShoot() {
-  let enemySpeed = 1 + (currentWave * 0.3);  // Gets faster each wave
+  // Wave 1 starts slower — speed scales up more gradually
+  let enemySpeed = 0.5 + (currentWave * 0.3);
 
   enemyFireTimer++;
-  let fireInterval = max(40, 120 - (currentWave * 10));  // Fire more often each wave
+
+  // Wave 1 fires less often — interval starts higher
+  let fireInterval = max(40, 150 - (currentWave * 10));
 
   for (let e of enemies) {
-    // Move left
     e.x -= enemySpeed;
 
     // If enemy reaches left edge, damage shield
@@ -209,7 +235,6 @@ function moveEnemiesAndShoot() {
     }
   }
 
- 
   if (enemyFireTimer >= fireInterval) enemyFireTimer = 0;
 }
 
@@ -235,10 +260,8 @@ function checkCollisions() {
     bullet.remove();
     enemy.remove();
     score += 100;
-    checkWaveAdvance();
   });
 
-  // Enemy bullet hits the player
   enemyBullets.overlaps(player, (bullet, p) => {
     bullet.remove();
     shieldHP--;
@@ -247,23 +270,9 @@ function checkCollisions() {
 }
 
 
-let enemiesDestroyedThisWave = 0;
-let enemiesToAdvance = 8;  // Destroy 8 enemies to advance
-
-function checkWaveAdvance() {
-  enemiesDestroyedThisWave++;
-
-  if (enemiesDestroyedThisWave >= enemiesToAdvance) {
-    currentWave++;
-    enemiesDestroyedThisWave = 0;
-    enemiesToAdvance += 2;  
-  }
-}
-
-
 function checkShieldDepleted() {
   if (shieldHP <= 0) {
-    if (score > highScore) highScore = score;  // Save high score
+    if (score > highScore) highScore = score;
     gameState = "over";
   }
 }
@@ -274,18 +283,27 @@ function drawHUD() {
   noStroke();
   textAlign(LEFT);
 
+ 
+  let secondsLeft = Math.ceil((waveTimerMax - waveTimer) / 60);
+
   textSize(16);
   text("Score: " + score, 10, 25);
   text("Wave:  " + currentWave, 10, 48);
+  text("Next wave: " + secondsLeft + "s", 10, 71);
+  text("Ammo: " + bulletsRemaining + " / 25", 10, 94);
+  text("Bombs: " + "💣".repeat(max(0, bombCount)), 10, 117);
   text("Shield: " + "♥ ".repeat(max(0, shieldHP)), 10, height - 10);
-  text("Ammo: " + bulletsRemaining + " / 25", 10, 71);
 }
 
 
 function keyPressed() {
+  // B key uses a bomb
+  if (key === "b" || key === "B") {
+    if (gameState === "play") useBomb();
+  }
+
   if (key === "Enter") {
     if (gameState === "title") {
-      // Start the game
       gameState = "play";
     }
 
@@ -296,8 +314,8 @@ function keyPressed() {
       shieldHP                 = 3;
       bulletsRemaining         = 25;
       bulletRecharge           = 0;
-      enemiesDestroyedThisWave = 0;
-      enemiesToAdvance         = 8;
+      waveTimer                = 0;
+      bombCount                = 3;
       enemySpawnTimer          = 0;
       enemyFireTimer           = 0;
       enemies.removeAll();
