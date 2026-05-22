@@ -1,0 +1,27 @@
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #080808;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#game-wrapper {
+  border-radius: 10px;
+  border: 2px solid #00ff55;
+  box-shadow: 0 0 18px #00ff55, 0 0 55px #00ff5566, inset 0 0 18px #00ff5522;
+  transition: box-shadow 0.6s ease, border-color 0.6s ease;
+  line-height: 0;
+}
+
+#game-wrapper canvas {
+  display: block;
+  border-radius: 8px;
+}
