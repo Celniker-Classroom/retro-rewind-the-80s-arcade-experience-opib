@@ -1,6 +1,8 @@
+const q = new Q5();
+
 let gameState = "title";
 
-// Scores
+// score holders
 let score = 0;
 let highScore = 0;
 let currentWave = 1;
@@ -9,17 +11,18 @@ let bulletsRemaining = 25;
 let bulletRecharge = 0;
 let bulletRechargeInterval = 144;
 
+// wave timer
 let waveTimer = 0;
 let waveTimerMax = 1200;
 
-// Bombs
+// bomb
 let bombCount = 3;
 let activeBomb = null;
 
-// Explosions
+// explosions
 let explosions = [];
 
-// wave colors for different parts of the game
+// wave colors
 let waveColors = [
   { bg: [0,  35, 10],  glow: '#00ff55' },  // Wave 1: Green
   { bg: [0,  20, 40],  glow: '#00cfff' },  // Wave 2: Cyan
@@ -31,46 +34,46 @@ let waveColors = [
   { bg: [65,  0,  0],  glow: '#ff1111' },  // Wave 8+: Red
 ];
 
-// Sprites
+//sprites 
+
 let playerImg;
 let enemyImg;
-let enemies;
-let playerBullets;
-let enemyBullets;
+
+let enemyList      = [];
+let playerBullets  = [];
+let enemyBullets   = [];
+
+let player = {};
 
 let enemySpawnTimer = 0;
 let enemyFireTimer  = 0;
+let shootCooldown   = 0;
 
 
-function preload() {
-  playerImg = loadImage("player.png");
-  enemyImg  = loadImage("enemy.png");
-}
+q.preload = function() {
+  playerImg = q.loadImage("player.png");
+  enemyImg  = q.loadImage("enemy.png");
+};
 
+q.setup = function() {
+  let cnv = q.createCanvas(800, 500);
+  cnv.parent("game-wrapper");
 
-function setup() {
-  let cnv = createCanvas(800, 500);
-  cnv.parent('game-wrapper');
-
-  enemies       = new Group();
-  playerBullets = new Group();
-  enemyBullets  = new Group();
-
-  player              = new Sprite();
-  player.scale        = 0.5;
-  player.image        = playerImg;
-  player.x            = 80;
-  player.y            = height / 2;
-  player.collider     = "dynamic";
-  player.gravityScale = 0;
+  // player sprite
+  player = {
+    x:      80,
+    y:      q.height / 2,
+    w:      playerImg.width  * 0.5,
+    h:      playerImg.height * 0.5,
+    img:    playerImg
+  };
 
   updateBorderColor();
-}
+};
 
-
-function draw() {
-  let wc = waveColors[min(currentWave - 1, waveColors.length - 1)];
-  background(wc.bg[0], wc.bg[1], wc.bg[2]);
+q.draw = function() {
+  let wc = waveColors[Math.min(currentWave - 1, waveColors.length - 1)];
+  q.background(wc.bg[0], wc.bg[1], wc.bg[2]);
 
   if (gameState === "title") {
     showTitleScreen();
@@ -79,37 +82,35 @@ function draw() {
   } else if (gameState === "over") {
     showGameOverScreen();
   }
-}
+};
 
-
+//title screen
 function showTitleScreen() {
-  fill("white");
-  textAlign(CENTER);
-  textSize(48);
-  text("STELLAR SIEGE", width / 2, 180);
-  textSize(16);
-  text("High Score: " + highScore, width / 2, 240);
-  if (frameCount % 60 < 30) {
-    text("PRESS ENTER TO PLAY", width / 2, 310);
+  q.fill("white");
+  q.textAlign(q.CENTER);
+  q.textSize(48);
+  q.text("STELLAR SIEGE", q.width / 2, 180);
+  q.textSize(16);
+  q.text("High Score: " + highScore, q.width / 2, 240);
+  if (q.frameCount % 60 < 30) {
+    q.text("PRESS ENTER TO PLAY", q.width / 2, 310);
   }
 }
-
 
 function showGameOverScreen() {
-  fill("red");
-  textAlign(CENTER);
-  textSize(48);
-  text("GAME OVER", width / 2, 180);
-  fill("white");
-  textSize(20);
-  text("Score: " + score, width / 2, 260);
-  text("Wave reached: " + currentWave, width / 2, 295);
-  textSize(16);
-  if (frameCount % 60 < 30) {
-    text("PRESS ENTER TO RESTART", width / 2, 360);
+  q.fill("red");
+  q.textAlign(q.CENTER);
+  q.textSize(48);
+  q.text("GAME OVER", q.width / 2, 180);
+  q.fill("white");
+  q.textSize(20);
+  q.text("Score: " + score, q.width / 2, 260);
+  q.text("Wave reached: " + currentWave, q.width / 2, 295);
+  q.textSize(16);
+  if (q.frameCount % 60 < 30) {
+    q.text("PRESS ENTER TO RESTART", q.width / 2, 360);
   }
 }
-
 
 function runGameplay() {
   tickWaveTimer();
@@ -121,9 +122,10 @@ function runGameplay() {
   updateBomb();
   checkCollisions();
   updateAndDrawExplosions();
+  drawPlayer();
+  drawEnemies();
   drawHUD();
 }
-
 
 function tickWaveTimer() {
   waveTimer++;
@@ -135,90 +137,99 @@ function tickWaveTimer() {
 }
 
 
-function movePlayer() {
-  let speed = 4;
-  if (kb.pressing("up")   || kb.pressing("w")) player.y -= speed;
-  if (kb.pressing("down") || kb.pressing("s")) player.y += speed;
-  player.y = constrain(player.y, 20, height - 20);
+function drawPlayer() {
+  q.imageMode(q.CENTER);
+  q.image(player.img, player.x, player.y, player.w, player.h);
 }
 
+function drawEnemies() {
+  q.imageMode(q.CENTER);
+  for (let e of enemyList) {
+    q.image(e.img, e.x, e.y, e.w, e.h);
+  }
+}
 
-let shootCooldown = 0;
+function movePlayer() {
+  let speed = 4;
+  if (q.kb.pressing("up")   || q.kb.pressing("w")) player.y -= speed;
+  if (q.kb.pressing("down") || q.kb.pressing("s")) player.y += speed;
+  player.y = q.constrain(player.y, 20, q.height - 20);
+}
 
 function handlePlayerShooting() {
   if (shootCooldown > 0) shootCooldown--;
 
+  // Recharge one bullet every 288 frames
   bulletRecharge++;
   if (bulletRecharge >= bulletRechargeInterval) {
     bulletRecharge = 0;
     if (bulletsRemaining < 25) bulletsRemaining++;
   }
 
-  if (kb.pressing("space") && shootCooldown === 0 && bulletsRemaining > 0) {
-    let b          = new playerBullets.Sprite();
-    b.x            = player.x + 25;
-    b.y            = player.y;
-    b.w            = 14;
-    b.h            = 5;
-    b.color        = "yellow";
-    b.collider     = "dynamic";
-    b.gravityScale = 0;
-    shootCooldown  = 15;
+  if (q.kb.pressing("space") && shootCooldown === 0 && bulletsRemaining > 0) {
+    playerBullets.push({
+      x: player.x + player.w / 2,
+      y: player.y,
+      w: 14,
+      h: 5
+    });
+    shootCooldown = 15;
     bulletsRemaining--;
   }
 }
 
-
+//bomb (msg to odin: new feature)
 function useBomb() {
   if (bombCount <= 0 || activeBomb !== null) return;
   bombCount--;
-
-  enemyBullets.removeAll();
+  enemyBullets = []; 
 
   activeBomb = {
-    x: player.x + 30,
-    y: player.y,
+    x:     player.x + 30,
+    y:     player.y,
     speed: 14,
     trail: []
   };
 }
 
-
 function updateBomb() {
   if (!activeBomb) return;
 
-  // Build trail
+ 
   activeBomb.trail.push({ x: activeBomb.x, y: activeBomb.y });
   if (activeBomb.trail.length > 14) activeBomb.trail.shift();
 
   activeBomb.x += activeBomb.speed;
 
-  for (let i = enemies.length - 1; i >= 0; i--) {
-    let e = enemies[i];
-    if (dist(activeBomb.x, activeBomb.y, e.x, e.y) < 80) {
+
+  for (let i = enemyList.length - 1; i >= 0; i--) {
+    let e = enemyList[i];
+    if (q.dist(activeBomb.x, activeBomb.y, e.x, e.y) < 80) {
       createExplosion(e.x, e.y);
-      e.remove();
+      enemyList.splice(i, 1);
       score += 100;
     }
   }
 
-  noStroke();
+
+  q.noStroke();
   for (let i = 0; i < activeBomb.trail.length; i++) {
-    let alpha = map(i, 0, activeBomb.trail.length, 0, 180);
-    fill(255, 160, 0, alpha);
-    circle(activeBomb.trail[i].x, activeBomb.trail[i].y, 10);
+    let alpha = q.map(i, 0, activeBomb.trail.length, 0, 180);
+    q.fill(255, 160, 0, alpha);
+    q.circle(activeBomb.trail[i].x, activeBomb.trail[i].y, 10);
   }
 
-  stroke(255, 220, 50);
-  strokeWeight(2);
-  fill(255, 80, 0);
-  circle(activeBomb.x, activeBomb.y, 22);
-  noStroke();
 
-  // Off-screen: clear anything the bomb missed, award bonus
-  if (activeBomb.x > width + 40) {
-    for (let e of enemies) createExplosion(e.x, e.y);
-    enemies.removeAll();
+  q.stroke(255, 220, 50);
+  q.strokeWeight(2);
+  q.fill(255, 80, 0);
+  q.circle(activeBomb.x, activeBomb.y, 22);
+  q.noStroke();
+
+
+  if (activeBomb.x > q.width + 40) {
+    for (let e of enemyList) createExplosion(e.x, e.y);
+    enemyList = [];
     score += 200;
     activeBomb = null;
   }
@@ -227,49 +238,51 @@ function updateBomb() {
 function spawnEnemies() {
   enemySpawnTimer++;
 
-  let baseInterval = max(20, 120 - (currentWave * 15));
-  // Wave 1 = 2× interval (half the enemies). Ramps to full speed by wave 5.
-  let scaleFactor  = max(1.0, 2.0 - (currentWave - 1) * 0.25);
+  let baseInterval  = Math.max(20, 120 - (currentWave * 15));
+  let scaleFactor   = Math.max(1.0, 2.0 - (currentWave - 1) * 0.25);
   let spawnInterval = Math.floor(baseInterval * scaleFactor);
 
   if (enemySpawnTimer >= spawnInterval) {
     enemySpawnTimer = 0;
-
-    let e          = new enemies.Sprite();
-    e.x            = width + 20;
-    e.y            = random(40, height - 40);
-    e.scale        = 0.4;
-    e.image        = enemyImg;
-    e.collider     = "dynamic";
-    e.gravityScale = 0;
+    enemyList.push({
+      x:   q.width + 20,
+      y:   q.random(40, q.height - 40),
+      w:   enemyImg.width  * 0.4,
+      h:   enemyImg.height * 0.4,
+      img: enemyImg
+    });
   }
 }
 
+//enemies movement 
+
 function moveEnemiesAndShoot() {
   let enemySpeed   = 0.5 + (currentWave * 0.3);
-  let fireInterval = max(40, 150 - (currentWave * 10));
+  let fireInterval = Math.max(40, 150 - (currentWave * 10));
 
   enemyFireTimer++;
 
-  for (let e of enemies) {
+  for (let i = enemyList.length - 1; i >= 0; i--) {
+    let e = enemyList[i];
     e.x -= enemySpeed;
+
 
     if (e.x < 0) {
       createExplosion(e.x + 10, e.y);
-      e.remove();
+      enemyList.splice(i, 1);
       shieldHP--;
       checkShieldDepleted();
+      continue;
     }
 
+  
     if (enemyFireTimer >= fireInterval) {
-      let b          = new enemyBullets.Sprite();
-      b.x            = e.x - 20;
-      b.y            = e.y;
-      b.w            = 12;
-      b.h            = 5;
-      b.color        = "orange";
-      b.collider     = "dynamic";
-      b.gravityScale = 0;
+      enemyBullets.push({
+        x: e.x - 20,
+        y: e.y,
+        w: 12,
+        h: 5
+      });
     }
   }
 
@@ -277,30 +290,60 @@ function moveEnemiesAndShoot() {
 }
 
 function moveBullets() {
-  for (let b of playerBullets) {
+  q.noStroke();
+
+  for (let i = playerBullets.length - 1; i >= 0; i--) {
+    let b = playerBullets[i];
     b.x += 8;
-    if (b.x > width + 20) b.remove();
+    q.fill("yellow");
+    q.rectMode(q.CENTER);
+    q.rect(b.x, b.y, b.w, b.h);
+    if (b.x > q.width + 20) playerBullets.splice(i, 1);
   }
 
-  for (let b of enemyBullets) {
+  for (let i = enemyBullets.length - 1; i >= 0; i--) {
+    let b = enemyBullets[i];
     b.x -= 6;
-    if (b.x < -20) b.remove();
+    q.fill("orange");
+    q.rectMode(q.CENTER);
+    q.rect(b.x, b.y, b.w, b.h);
+    if (b.x < -20) enemyBullets.splice(i, 1);
   }
 }
 
 function checkCollisions() {
-  playerBullets.overlaps(enemies, (bullet, enemy) => {
-    createExplosion(enemy.x, enemy.y);
-    bullet.remove();
-    enemy.remove();
-    score += 100;
-  });
 
-  enemyBullets.overlaps(player, (bullet, p) => {
-    bullet.remove();
-    shieldHP--;
-    checkShieldDepleted();
-  });
+
+  for (let bi = playerBullets.length - 1; bi >= 0; bi--) {
+    let b = playerBullets[bi];
+    for (let ei = enemyList.length - 1; ei >= 0; ei--) {
+      let e = enemyList[ei];
+      if (rectOverlap(b, e)) {
+        createExplosion(e.x, e.y);
+        playerBullets.splice(bi, 1);
+        enemyList.splice(ei, 1);
+        score += 100;
+        break;
+      }
+    }
+  }
+
+  for (let i = enemyBullets.length - 1; i >= 0; i--) {
+    let b = enemyBullets[i];
+    if (rectOverlap(b, player)) {
+      enemyBullets.splice(i, 1);
+      shieldHP--;
+      checkShieldDepleted();
+    }
+  }
+}
+
+
+function rectOverlap(a, b) {
+  return (
+    Math.abs(a.x - b.x) < (a.w + b.w) / 2 &&
+    Math.abs(a.y - b.y) < (a.h + b.h) / 2
+  );
 }
 
 function checkShieldDepleted() {
@@ -312,64 +355,67 @@ function checkShieldDepleted() {
 
 function createExplosion(x, y) {
   for (let i = 0; i < 8; i++) {
-    let angle = (TWO_PI / 8) * i;
-    let speed = random(1.5, 4);
+    let angle = (Math.PI * 2 / 8) * i;
+    let speed = q.random(1.5, 4);
     explosions.push({
       x, y,
-      vx: cos(angle) * speed,
-      vy: sin(angle) * speed,
-      life: 30, maxLife: 30,
-      size: random(4, 9)
+      vx:      Math.cos(angle) * speed,
+      vy:      Math.sin(angle) * speed,
+      life:    30,
+      maxLife: 30,
+      size:    q.random(4, 9)
     });
   }
 }
 
 function updateAndDrawExplosions() {
-  noStroke();
+  q.noStroke();
   for (let i = explosions.length - 1; i >= 0; i--) {
     let p = explosions[i];
     p.x += p.vx;
     p.y += p.vy;
     p.life--;
-    let alpha = map(p.life, 0, p.maxLife, 0, 255);
-    let g     = map(p.life, 0, p.maxLife, 0, 180);
-    fill(255, g, 0, alpha);
-    circle(p.x, p.y, p.size);
+    let alpha = q.map(p.life, 0, p.maxLife, 0, 255);
+    let g     = q.map(p.life, 0, p.maxLife, 0, 180);
+    q.fill(255, g, 0, alpha);
+    q.circle(p.x, p.y, p.size);
     if (p.life <= 0) explosions.splice(i, 1);
   }
 }
 
+
 function updateBorderColor() {
-  let wc = waveColors[min(currentWave - 1, waveColors.length - 1)];
-  let wrapper = document.getElementById('game-wrapper');
+  let wc      = waveColors[Math.min(currentWave - 1, waveColors.length - 1)];
+  let wrapper = document.getElementById("game-wrapper");
   if (!wrapper) return;
   wrapper.style.borderColor = wc.glow;
-  wrapper.style.boxShadow =
+  wrapper.style.boxShadow   =
     `0 0 18px ${wc.glow}, 0 0 55px ${wc.glow}66, inset 0 0 18px ${wc.glow}22`;
 }
 
+
 function drawHUD() {
-  fill("white");
-  noStroke();
-  textAlign(LEFT);
+  q.fill("white");
+  q.noStroke();
+  q.textAlign(q.LEFT);
 
   let secondsLeft = Math.ceil((waveTimerMax - waveTimer) / 60);
 
-  textSize(16);
-  text("Score: "      + score,               10, 25);
-  text("Wave:  "      + currentWave,          10, 48);
-  text("Next wave: "  + secondsLeft + "s",    10, 71);
-  text("Ammo: "       + bulletsRemaining + " / 25", 10, 94);
-  text("Bombs: "      + "💣".repeat(max(0, bombCount)), 10, 117);
-  text("Shield: "     + "♥ ".repeat(max(0, shieldHP)), 10, height - 10);
+  q.textSize(16);
+  q.text("Score: "     + score,                    10, 25);
+  q.text("Wave:  "     + currentWave,               10, 48);
+  q.text("Next wave: " + secondsLeft + "s",         10, 71);
+  q.text("Ammo: "      + bulletsRemaining + " / 25",10, 94);
+  q.text("Bombs: "     + "💣".repeat(Math.max(0, bombCount)), 10, 117);
+  q.text("Shield: "    + "♥ ".repeat(Math.max(0, shieldHP)),  10, q.height - 10);
 }
 
-function keyPressed() {
-  if (key === "b" || key === "B") {
+q.keyPressed = function() {
+  if (q.key === "b" || q.key === "B") {
     if (gameState === "play") useBomb();
   }
 
-  if (key === "Enter") {
+  if (q.key === "Enter") {
     if (gameState === "title") {
       gameState = "play";
     } else if (gameState === "over") {
@@ -384,13 +430,13 @@ function keyPressed() {
       enemyFireTimer   = 0;
       explosions       = [];
       activeBomb       = null;
-      enemies.removeAll();
-      playerBullets.removeAll();
-      enemyBullets.removeAll();
-      player.x  = 80;
-      player.y  = height / 2;
-      gameState = "play";
+      enemyList        = [];
+      playerBullets    = [];
+      enemyBullets     = [];
+      player.x         = 80;
+      player.y         = q.height / 2;
+      gameState        = "play";
       updateBorderColor();
     }
   }
-}
+};
