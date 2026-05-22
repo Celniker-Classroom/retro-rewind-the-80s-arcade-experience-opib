@@ -37,8 +37,8 @@ function setup() {
   player.image       = playerImg;
   player.x           = 80;
   player.y           = height / 2;
-  player.w           = 40;    // was 80, halved
-  player.h           = 25;    // was 50, halved
+  player.w           = 40;    
+  player.h           = 25;   
   player.collider    = "dynamic";
   player.gravityScale = 0;  
 }
@@ -169,14 +169,13 @@ function spawnEnemies() {
     let e          = new enemies.Sprite();
     e.x            = width + 20;          
     e.y            = random(40, height - 40); 
-    e.w            = 14;    // was 35, now 2/5 of that
-    e.h            = 4;     // was 10, now 2/5 of that
+    e.w            = 14;
+    e.h            = 4;     
     e.image        = enemyImg;    
     e.collider     = "dynamic";
-    e.gravityScale = 0;   // must be after e is created
+    e.gravityScale = 0;  
   }
 }
-
 
 function moveEnemiesAndShoot() {
   let enemySpeed = 1 + (currentWave * 0.3);  // Gets faster each wave
@@ -204,11 +203,11 @@ function moveEnemiesAndShoot() {
       b.h            = 5;
       b.color        = "orange";
       b.collider     = "dynamic";
-      b.gravityScale = 0;   // must be after b is created
+      b.gravityScale = 0;   
     }
   }
 
-  // Reset fire timer after one round of shots
+ 
   if (enemyFireTimer >= fireInterval) enemyFireTimer = 0;
 }
 
@@ -255,7 +254,7 @@ function checkWaveAdvance() {
   if (enemiesDestroyedThisWave >= enemiesToAdvance) {
     currentWave++;
     enemiesDestroyedThisWave = 0;
-    enemiesToAdvance += 2;  // Each wave requires more kills
+    enemiesToAdvance += 2;  
   }
 }
 
