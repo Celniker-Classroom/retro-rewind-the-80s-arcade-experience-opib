@@ -37,6 +37,7 @@ function setup() {
   player.image       = playerImg;
   player.x           = 80;
   player.y           = height / 2;
+  player.scale       = 0.5;
   player.w           = 40;    
   player.h           = 25;   
   player.collider    = "dynamic";
@@ -171,6 +172,7 @@ function spawnEnemies() {
     e.y            = random(40, height - 40); 
     e.w            = 14;
     e.h            = 4;     
+    e.scale        = 0.4;
     e.image        = enemyImg;    
     e.collider     = "dynamic";
     e.gravityScale = 0;  
