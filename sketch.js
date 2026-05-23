@@ -56,15 +56,15 @@ q.preload = function() {
 };
 
 q.setup = function() {
-  let cnv = q.createCanvas(800, 500);
-  cnv.parent("game-wrapper");
+  q.createCanvas(800, 500);
+  document.getElementById("game-wrapper").appendChild(q.canvas);
 
   // player sprite
   player = {
     x:      80,
     y:      q.height / 2,
-    w:      playerImg.width  * 0.5,
-    h:      playerImg.height * 0.5,
+    w:      100,
+    h:      60,
     img:    playerImg
   };
 
@@ -247,8 +247,8 @@ function spawnEnemies() {
     enemyList.push({
       x:   q.width + 20,
       y:   q.random(40, q.height - 40),
-      w:   enemyImg.width  * 0.4,
-      h:   enemyImg.height * 0.4,
+      w:   80,
+      h:   50,
       img: enemyImg
     });
   }
