@@ -2,21 +2,25 @@ new Q5("global");
 
 let gameState = "title";
 
-let score = 0;
-let highScore = 0;
-let currentWave = 1;
-let shieldHP = 3;
+let score            = 0;
+let highScore        = 0;
+let currentWave      = 1;
+let shieldHP         = 3;
 let bulletsRemaining = 25;
-let bulletRecharge = 0;
+let bulletRecharge   = 0;
 let bulletRechargeInterval = 144;
 
-let waveTimer = 0;
+let waveTimer    = 0;
 let waveTimerMax = 1200;
 
-let bombCount = 3;
+let bombCount  = 3;
 let activeBomb = null;
-
 let explosions = [];
+
+
+let stars            = [];
+let screenFlashTimer = 0;
+let waveAnnouncement = { text: "", timer: 0, maxTimer: 180 };
 
 let waveColors = [
   { bg: [0,  35, 10],  glow: '#00ff55' },
@@ -29,36 +33,35 @@ let waveColors = [
   { bg: [65,  0,  0],  glow: '#ff1111' },
 ];
 
-let playerImg;
-let enemyImg;
 let enemyList     = [];
 let playerBullets = [];
 let enemyBullets  = [];
 let player        = {};
 
-let enemySpawnTimer = 0;
-let enemyFireTimer  = 0;
-let shootCooldown   = 0;
-
-
-function preload() {
-  playerImg = loadImage("player.png");
-  enemyImg  = loadImage("enemy.png");
-}
+let enemyFireTimer = 0;
+let shootCooldown  = 0;
+let formationTimer = 0;
 
 
 function setup() {
   let cnv = createCanvas(800, 500);
   document.getElementById("game-wrapper").appendChild(cnv.elt || cnv);
 
-  player = {
-    x:   80,
-    y:   height / 2,
-    w:   100,
-    h:   60,
-    img: playerImg
-  };
+  // Persist high score between sessions
+  highScore = parseInt(localStorage.getItem("stellarSiegeHighScore")) || 0;
 
+  // Seed star field
+  for (let i = 0; i < 120; i++) {
+    stars.push({
+      x:          random(0, 800),
+      y:          random(0, 500),
+      size:       random(1, 3),
+      speed:      random(0.5, 2.5),
+      brightness: random(150, 255)
+    });
+  }
+
+  player = { x: 80, y: height / 2, w: 64, h: 44 };
   updateBorderColor();
 }
 
@@ -67,6 +70,8 @@ function draw() {
   let wc = waveColors[Math.min(currentWave - 1, waveColors.length - 1)];
   background(wc.bg[0], wc.bg[1], wc.bg[2]);
 
+  drawStars();
+
   if (gameState === "title") {
     showTitleScreen();
   } else if (gameState === "play") {
@@ -74,10 +79,35 @@ function draw() {
   } else if (gameState === "over") {
     showGameOverScreen();
   }
+
+ 
+  if (screenFlashTimer > 0) {
+    push();
+    noStroke();
+    fill(255, 0, 0, map(screenFlashTimer, 0, 20, 0, 130));
+    rectMode(CORNER);
+    rect(0, 0, width, height);
+    pop();
+    screenFlashTimer--;
+  }
+}
+
+function drawStars() {
+  noStroke();
+  for (let s of stars) {
+    s.x -= s.speed;
+    if (s.x < 0) {
+      s.x = width + 2;
+      s.y = random(0, height);
+    }
+    fill(s.brightness, s.brightness, s.brightness);
+    circle(s.x, s.y, s.size);
+  }
 }
 
 
 function showTitleScreen() {
+  noStroke();
   fill("white");
   textAlign(CENTER);
   textSize(48);
@@ -91,6 +121,7 @@ function showTitleScreen() {
 
 
 function showGameOverScreen() {
+  noStroke();
   fill("red");
   textAlign(CENTER);
   textSize(48);
@@ -110,15 +141,16 @@ function runGameplay() {
   tickWaveTimer();
   movePlayer();
   handlePlayerShooting();
-  spawnEnemies();
+  spawnFormation();
   moveEnemiesAndShoot();
   moveBullets();
   updateBomb();
   checkCollisions();
   updateAndDrawExplosions();
-  drawPlayer();
   drawEnemies();
+  drawPlayer();
   drawHUD();
+  drawWaveAnnouncement();
 }
 
 
@@ -128,23 +160,112 @@ function tickWaveTimer() {
     waveTimer = 0;
     currentWave++;
     updateBorderColor();
+    triggerWaveAnnouncement();
   }
+}
+
+
+function triggerWaveAnnouncement() {
+  waveAnnouncement.text  = "WAVE " + currentWave;
+  waveAnnouncement.timer = waveAnnouncement.maxTimer;
+}
+
+
+function drawWaveAnnouncement() {
+  if (waveAnnouncement.timer <= 0) return;
+
+  let t   = waveAnnouncement.timer;
+  let max = waveAnnouncement.maxTimer;
+  let alpha;
+
+  if (t > max - 40) {
+    alpha = map(t, max, max - 40, 0, 255);  // fade in
+  } else if (t < 40) {
+    alpha = map(t, 40, 0, 255, 0);           // fade out
+  } else {
+    alpha = 255;
+  }
+
+  push();
+  noStroke();
+  textAlign(CENTER);
+  textSize(64);
+  fill(255, 255, 80, alpha);
+  text(waveAnnouncement.text, width / 2, height / 2 + 22);
+  pop();
+
+  waveAnnouncement.timer--;
 }
 
 
 function drawPlayer() {
-  imageMode(CENTER);
-  image(player.img, player.x, player.y, player.w, player.h);
+  push();
+  translate(player.x, player.y);
+  noStroke();
+
+
+  fill(255, 140, 0);
+  triangle(-28, -3, -38, -14, -20, -3);
+  triangle(-28,  3, -38,  14, -20,  3);
+
+  // Wings
+  fill(0, 100, 200);
+  triangle(-12, -8, -20, -24,  14, -8);
+  triangle(-12,  8, -20,  24,  14,  8);
+
+  // Fuselage
+  fill(20, 155, 255);
+  rectMode(CENTER);
+  rect(0, 0, 46, 16);
+
+  // Nose cone
+  triangle(23, -8, 23, 8, 36, 0);
+
+  // Cockpit window
+  fill(0, 50, 140);
+  ellipse(5, 0, 17, 11);
+
+  // Cockpit highlight
+  fill(120, 210, 255, 160);
+  ellipse(3, -2, 9, 5);
+
+  pop();
+}
+
+
+function drawEnemySprite(e) {
+  push();
+  translate(e.x, e.y);
+  noStroke();
+
+  fill(255, 80, 255);
+  triangle(26, -3, 36, -12, 20, -3);
+  triangle(26,  3, 36,  12, 20,  3);
+
+  // Wings
+  fill(130, 20, 130);
+  triangle(12, -7, 20, -22, -10, -7);
+  triangle(12,  7, 20,  22, -10,  7);
+
+  // Body
+  fill(190, 30, 190);
+  rectMode(CENTER);
+  rect(0, 0, 42, 14);
+
+  // Nose cone (pointing left)
+  triangle(-21, -7, -21, 7, -33, 0);
+
+  // Cockpit
+  fill(255, 100, 255);
+  ellipse(-4, 0, 14, 9);
+
+  pop();
 }
 
 
 function drawEnemies() {
-  imageMode(CENTER);
-  for (let e of enemyList) {
-    image(e.img, e.x, e.y, e.w, e.h);
-  }
+  for (let e of enemyList) drawEnemySprite(e);
 }
-
 
 function movePlayer() {
   let speed = 4;
@@ -164,14 +285,95 @@ function handlePlayerShooting() {
   }
 
   if (kb.pressing("space") && shootCooldown === 0 && bulletsRemaining > 0) {
-    playerBullets.push({
-      x: player.x + player.w / 2,
-      y: player.y,
-      w: 14,
-      h: 5
-    });
-    shootCooldown = 15;
+    playerBullets.push({ x: player.x + 36, y: player.y, w: 14, h: 5 });
+    shootCooldown    = 15;
     bulletsRemaining--;
+  }
+}
+
+
+function spawnFormation() {
+  formationTimer++;
+  let interval = Math.max(90, 350 - currentWave * 35);
+  if (formationTimer < interval) return;
+  formationTimer = 0;
+
+  let type  = Math.floor(random(2)); 
+  let baseY = random(90, height - 90);
+  let sx    = width + 30;
+
+  if (type === 0) {
+    let count   = 4 + Math.floor(random(2));
+    let spacing = Math.min(70, (height - 120) / count);
+    let startY  = height / 2 - ((count - 1) * spacing) / 2;
+    for (let i = 0; i < count; i++) {
+      addEnemy(sx + i * 20, startY + i * spacing);
+    }
+  } else {
+  
+    let offsets = [
+      { dx:  0, dy:  0  },
+      { dx: 45, dy: -38 },
+      { dx: 45, dy:  38 },
+      { dx: 90, dy: -76 },
+      { dx: 90, dy:  76 },
+    ];
+    for (let o of offsets) {
+      addEnemy(sx + o.dx, constrain(baseY + o.dy, 50, height - 50));
+    }
+  }
+}
+
+
+function addEnemy(x, y) {
+  enemyList.push({ x, y, w: 64, h: 44 });
+}
+
+
+function moveEnemiesAndShoot() {
+  let enemySpeed   = 0.5 + currentWave * 0.3;
+  let fireInterval = Math.max(40, 150 - currentWave * 10);
+
+  enemyFireTimer++;
+
+  for (let i = enemyList.length - 1; i >= 0; i--) {
+    let e = enemyList[i];
+    e.x -= enemySpeed;
+
+    if (e.x < -40) {
+      createExplosion(e.x + 50, e.y);
+      enemyList.splice(i, 1);
+      shieldHP--;
+      checkShieldDepleted();
+      continue;
+    }
+
+    if (enemyFireTimer >= fireInterval) {
+      enemyBullets.push({ x: e.x - 24, y: e.y, w: 12, h: 5 });
+    }
+  }
+
+  if (enemyFireTimer >= fireInterval) enemyFireTimer = 0;
+}
+
+function moveBullets() {
+  noStroke();
+  rectMode(CENTER);
+
+  for (let i = playerBullets.length - 1; i >= 0; i--) {
+    let b = playerBullets[i];
+    b.x += 8;
+    fill(255, 255, 0);
+    rect(b.x, b.y, b.w, b.h);
+    if (b.x > width + 20) playerBullets.splice(i, 1);
+  }
+
+  for (let i = enemyBullets.length - 1; i >= 0; i--) {
+    let b = enemyBullets[i];
+    b.x -= 6;
+    fill(255, 100, 0);
+    rect(b.x, b.y, b.w, b.h);
+    if (b.x < -20) enemyBullets.splice(i, 1);
   }
 }
 
@@ -180,13 +382,7 @@ function useBomb() {
   if (bombCount <= 0 || activeBomb !== null) return;
   bombCount--;
   enemyBullets = [];
-
-  activeBomb = {
-    x:     player.x + 30,
-    y:     player.y,
-    speed: 14,
-    trail: []
-  };
+  activeBomb = { x: player.x + 30, y: player.y, speed: 14, trail: [] };
 }
 
 
@@ -222,84 +418,9 @@ function updateBomb() {
 
   if (activeBomb.x > width + 40) {
     for (let e of enemyList) createExplosion(e.x, e.y);
-    enemyList = [];
-    score += 200;
+    enemyList  = [];
+    score     += 200;
     activeBomb = null;
-  }
-}
-
-
-function spawnEnemies() {
-  enemySpawnTimer++;
-
-  let baseInterval  = Math.max(20, 120 - (currentWave * 15));
-  let scaleFactor   = Math.max(1.0, 2.0 - (currentWave - 1) * 0.25);
-  let spawnInterval = Math.floor(baseInterval * scaleFactor);
-
-  if (enemySpawnTimer >= spawnInterval) {
-    enemySpawnTimer = 0;
-    enemyList.push({
-      x:   width + 20,
-      y:   random(40, height - 40),
-      w:   80,
-      h:   50,
-      img: enemyImg
-    });
-  }
-}
-
-
-function moveEnemiesAndShoot() {
-  let enemySpeed   = 0.5 + (currentWave * 0.3);
-  let fireInterval = Math.max(40, 150 - (currentWave * 10));
-
-  enemyFireTimer++;
-
-  for (let i = enemyList.length - 1; i >= 0; i--) {
-    let e = enemyList[i];
-    e.x -= enemySpeed;
-
-    if (e.x < 0) {
-      createExplosion(e.x + 10, e.y);
-      enemyList.splice(i, 1);
-      shieldHP--;
-      checkShieldDepleted();
-      continue;
-    }
-
-    if (enemyFireTimer >= fireInterval) {
-      enemyBullets.push({
-        x: e.x - 20,
-        y: e.y,
-        w: 12,
-        h: 5
-      });
-    }
-  }
-
-  if (enemyFireTimer >= fireInterval) enemyFireTimer = 0;
-}
-
-
-function moveBullets() {
-  noStroke();
-
-  for (let i = playerBullets.length - 1; i >= 0; i--) {
-    let b = playerBullets[i];
-    b.x += 8;
-    fill("yellow");
-    rectMode(CENTER);
-    rect(b.x, b.y, b.w, b.h);
-    if (b.x > width + 20) playerBullets.splice(i, 1);
-  }
-
-  for (let i = enemyBullets.length - 1; i >= 0; i--) {
-    let b = enemyBullets[i];
-    b.x -= 6;
-    fill("orange");
-    rectMode(CENTER);
-    rect(b.x, b.y, b.w, b.h);
-    if (b.x < -20) enemyBullets.splice(i, 1);
   }
 }
 
@@ -324,6 +445,7 @@ function checkCollisions() {
     if (rectOverlap(b, player)) {
       enemyBullets.splice(i, 1);
       shieldHP--;
+      screenFlashTimer = 20;  // trigger red flash
       checkShieldDepleted();
     }
   }
@@ -340,10 +462,14 @@ function rectOverlap(a, b) {
 
 function checkShieldDepleted() {
   if (shieldHP <= 0) {
-    if (score > highScore) highScore = score;
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem("stellarSiegeHighScore", highScore);
+    }
     gameState = "over";
   }
 }
+
 
 
 function createExplosion(x, y) {
@@ -378,6 +504,25 @@ function updateAndDrawExplosions() {
 }
 
 
+function drawHUD() {
+  push();
+  fill("white");
+  noStroke();
+  textAlign(LEFT);
+
+  let secondsLeft = Math.ceil((waveTimerMax - waveTimer) / 60);
+
+  textSize(16);
+  text("Score: "     + score,                      10, 25);
+  text("Wave:  "     + currentWave,                10, 48);
+  text("Next wave: " + secondsLeft + "s",          10, 71);
+  text("Ammo: "      + bulletsRemaining + " / 25", 10, 94);
+  text("Bombs: "     + "💣".repeat(Math.max(0, bombCount)), 10, 117);
+  text("Shield: "    + "♥ ".repeat(Math.max(0, shieldHP)),  10, height - 10);
+  pop();
+}
+
+
 function updateBorderColor() {
   let wc      = waveColors[Math.min(currentWave - 1, waveColors.length - 1)];
   let wrapper = document.getElementById("game-wrapper");
@@ -388,31 +533,15 @@ function updateBorderColor() {
 }
 
 
-function drawHUD() {
-  fill("white");
-  noStroke();
-  textAlign(LEFT);
-
-  let secondsLeft = Math.ceil((waveTimerMax - waveTimer) / 60);
-
-  textSize(16);
-  text("Score: "     + score,                     10, 25);
-  text("Wave:  "     + currentWave,                10, 48);
-  text("Next wave: " + secondsLeft + "s",          10, 71);
-  text("Ammo: "      + bulletsRemaining + " / 25", 10, 94);
-  text("Bombs: "     + "💣".repeat(Math.max(0, bombCount)), 10, 117);
-  text("Shield: "    + "♥ ".repeat(Math.max(0, shieldHP)),  10, height - 10);
-}
-
-
 function keyPressed() {
-  if (key === "b" || key === "B") {
-    if (gameState === "play") useBomb();
+  if ((key === "b" || key === "B") && gameState === "play") {
+    useBomb();
   }
 
   if (key === "Enter") {
     if (gameState === "title") {
       gameState = "play";
+      triggerWaveAnnouncement();
     } else if (gameState === "over") {
       score            = 0;
       currentWave      = 1;
@@ -421,8 +550,8 @@ function keyPressed() {
       bulletRecharge   = 0;
       waveTimer        = 0;
       bombCount        = 3;
-      enemySpawnTimer  = 0;
       enemyFireTimer   = 0;
+      formationTimer   = 0;
       explosions       = [];
       activeBomb       = null;
       enemyList        = [];
@@ -430,8 +559,10 @@ function keyPressed() {
       enemyBullets     = [];
       player.x         = 80;
       player.y         = height / 2;
+      screenFlashTimer = 0;
       gameState        = "play";
       updateBorderColor();
+      triggerWaveAnnouncement();
     }
   }
 }
