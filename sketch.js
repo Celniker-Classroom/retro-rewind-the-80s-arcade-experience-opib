@@ -1,6 +1,13 @@
 new Q5("global");
 
+// all game state variables
+
+let playerImg = new Image();
+playerImg.src = "image.png";
+
 let gameState = "title";
+
+// stats and scores, which control bullet reload, health, etc
 
 let score            = 0;
 let highScore        = 0;
@@ -16,6 +23,8 @@ let waveTimerMax = 1200;
 let bombCount  = 3;
 let activeBomb = null;
 let explosions = [];
+
+// stars, flash, wave announcement
 
 let stars            = [];
 let screenFlashTimer = 0;
@@ -41,9 +50,13 @@ let shootCooldown  = 0;
 let formationTimer = 0;
 
 let pressedKeys = {};
+
 let gfx;
 
+// the boss variable (appears after 5 waves)
 let boss = null;
+
+// powerups
 
 let powerups       = [];
 let rapidFireTimer = 0;
@@ -54,8 +67,10 @@ function setup() {
   document.getElementById("game-wrapper").appendChild(canvasElt);
   gfx = canvasElt.getContext("2d");
 
+  // high score stays constant between levels
   highScore = parseInt(localStorage.getItem("stellarSiegeHighScore")) || 0;
 
+  //star background
   for (let i = 0; i < 120; i++) {
     stars.push({
       x:          random(0, 800),
@@ -66,16 +81,17 @@ function setup() {
     });
   }
 
-  player = { x: 80, y: height / 2, w: 64, h: 44 };
+  // play hieght and width
+  player = { x: 80, y: height / 2, w: 64, h: 44, drawW: 131, drawH: 90 };
   updateBorderColor();
 }
 
+// wave colors, changes between each wave
 function draw() {
   let wc = waveColors[Math.min(currentWave - 1, waveColors.length - 1)];
   background(wc.bg[0], wc.bg[1], wc.bg[2]);
 
   drawStars();
-
   if (gameState === "title") {
     showTitleScreen();
   } else if (gameState === "howto") {
@@ -85,7 +101,7 @@ function draw() {
   } else if (gameState === "over") {
     showGameOverScreen();
   }
-
+// red flash when player is hit
   if (screenFlashTimer > 0) {
     push();
     noStroke();
@@ -96,7 +112,7 @@ function draw() {
     screenFlashTimer--;
   }
 }
-
+//star background function
 function drawStars() {
   noStroke();
   for (let s of stars) {
@@ -109,6 +125,8 @@ function drawStars() {
     circle(s.x, s.y, s.size);
   }
 }
+
+// Game Screen functions
 
 function showTitleScreen() {
   push();
@@ -123,6 +141,7 @@ function showTitleScreen() {
     text("PRESS ENTER TO PLAY", width / 2, 310);
   }
 
+ // how to play button 
   let btnX = 576, btnY = 360, btnW = 178, btnH = 42;
   fill(0, 45, 18, 210);
   stroke(0, 200, 100);
@@ -136,6 +155,7 @@ function showTitleScreen() {
   pop();
 }
 
+//game over loop
 function showGameOverScreen() {
   noStroke();
   fill("red");
@@ -152,6 +172,7 @@ function showGameOverScreen() {
   }
 }
 
+//game play (all functions)
 function runGameplay() {
   tickWaveTimer();
   movePlayer();
@@ -170,6 +191,7 @@ function runGameplay() {
   drawWaveAnnouncement();
 }
 
+
 function tickWaveTimer() {
   waveTimer++;
   if (waveTimer >= waveTimerMax) {
@@ -180,7 +202,7 @@ function tickWaveTimer() {
     if (currentWave % 5 === 0) spawnBoss();
   }
 }
-
+//wave announcement 
 function triggerWaveAnnouncement() {
   waveAnnouncement.text  = "WAVE " + currentWave;
   waveAnnouncement.timer = waveAnnouncement.maxTimer;
@@ -188,15 +210,14 @@ function triggerWaveAnnouncement() {
 
 function drawWaveAnnouncement() {
   if (waveAnnouncement.timer <= 0) return;
-
   let t   = waveAnnouncement.timer;
   let max = waveAnnouncement.maxTimer;
   let alpha;
 
   if (t > max - 40) {
-    alpha = map(t, max, max - 40, 0, 255);
+    alpha = map(t, max, max - 40, 0, 255);  // fade in
   } else if (t < 40) {
-    alpha = map(t, 40, 0, 255, 0);
+    alpha = map(t, 40, 0, 255, 0);           // fade out
   } else {
     alpha = 255;
   }
@@ -212,31 +233,17 @@ function drawWaveAnnouncement() {
   waveAnnouncement.timer--;
 }
 
+//sprites
 function drawPlayer() {
+
+  if (!playerImg.complete || playerImg.naturalWidth === 0) return;
+
   let c = gfx;
   c.save();
   c.translate(player.x, player.y);
+  c.rotate(Math.PI / 2);  // rotates character 90 degrees to face right
 
-  c.fillStyle = 'rgba(255,140,0,0.9)';
-  c.beginPath(); c.moveTo(-28,-3); c.lineTo(-38,-14); c.lineTo(-20,-3); c.closePath(); c.fill();
-  c.beginPath(); c.moveTo(-28, 3); c.lineTo(-38, 14); c.lineTo(-20, 3); c.closePath(); c.fill();
-
-  c.fillStyle = 'rgb(0,100,200)';
-  c.beginPath(); c.moveTo(-12,-8); c.lineTo(-20,-24); c.lineTo(14,-8); c.closePath(); c.fill();
-  c.beginPath(); c.moveTo(-12, 8); c.lineTo(-20, 24); c.lineTo(14, 8); c.closePath(); c.fill();
-
-  c.fillStyle = 'rgb(20,155,255)';
-  c.beginPath();
-  c.moveTo(36, 0); c.lineTo(14,-8); c.lineTo(-22,-8);
-  c.lineTo(-26,-4); c.lineTo(-26,4); c.lineTo(-22,8); c.lineTo(14,8);
-  c.closePath(); c.fill();
-
-  c.fillStyle = 'rgb(0,50,140)';
-  c.beginPath(); c.ellipse(5, 0, 9, 6, 0, 0, Math.PI*2); c.fill();
-
-  c.fillStyle = 'rgba(120,210,255,0.65)';
-  c.beginPath(); c.ellipse(3,-2, 5, 3, 0, 0, Math.PI*2); c.fill();
-
+  c.drawImage(playerImg, -player.drawH / 2, -player.drawW / 2, player.drawH, player.drawW);
   c.restore();
 }
 
@@ -245,20 +252,24 @@ function drawEnemySprite(e) {
   c.save();
   c.translate(e.x, e.y);
 
+ //thrusters
   c.fillStyle = 'rgba(255,80,255,0.9)';
   c.beginPath(); c.moveTo(26,-3); c.lineTo(36,-12); c.lineTo(20,-3); c.closePath(); c.fill();
   c.beginPath(); c.moveTo(26, 3); c.lineTo(36, 12); c.lineTo(20, 3); c.closePath(); c.fill();
 
+  // Wings
   c.fillStyle = 'rgb(130,20,130)';
   c.beginPath(); c.moveTo(12,-7); c.lineTo(20,-22); c.lineTo(-10,-7); c.closePath(); c.fill();
   c.beginPath(); c.moveTo(12, 7); c.lineTo(20, 22); c.lineTo(-10, 7); c.closePath(); c.fill();
 
+  // Body
   c.fillStyle = 'rgb(190,30,190)';
   c.beginPath();
   c.moveTo(-33,0); c.lineTo(-14,-7); c.lineTo(22,-7);
   c.lineTo(26,-3); c.lineTo(26,3); c.lineTo(22,7); c.lineTo(-14,7);
   c.closePath(); c.fill();
 
+  // Cockpit
   c.fillStyle = 'rgb(255,100,255)';
   c.beginPath(); c.ellipse(-4, 0, 7, 5, 0, 0, Math.PI*2); c.fill();
 
@@ -268,6 +279,7 @@ function drawEnemySprite(e) {
 function drawEnemies() {
   for (let e of enemyList) drawEnemySprite(e);
 }
+// player movement
 
 function movePlayer() {
   let speed = 4;
@@ -292,19 +304,22 @@ function handlePlayerShooting() {
     bulletsRemaining--;
   }
 }
+//how enemies spawn and the formations they come in
 
 function spawnFormation() {
   formationTimer++;
+  // Extra delay in early waves
   let easyBonus = Math.max(0, (5 - currentWave) * 60);
   let interval  = Math.max(90, 350 - currentWave * 35 + easyBonus);
   if (formationTimer < interval) return;
   formationTimer = 0;
 
-  let type  = Math.floor(random(2));
+  let type  = Math.floor(random(2)); 
   let baseY = random(90, height - 90);
   let sx    = width + 30;
 
   if (type === 0) {
+    // staggered vertical column enters one by one
     let count   = 4 + Math.floor(random(2));
     let spacing = Math.min(70, (height - 120) / count);
     let startY  = height / 2 - ((count - 1) * spacing) / 2;
@@ -312,6 +327,7 @@ function spawnFormation() {
       addEnemy(sx + i * 20, startY + i * spacing);
     }
   } else {
+    // v-formation: tip leads, wings spread behind
     let offsets = [
       { dx:  0, dy:  0  },
       { dx: 45, dy: -38 },
@@ -326,14 +342,16 @@ function spawnFormation() {
 }
 
 function addEnemy(x, y) {
+
   let fi = Math.max(73, 273 - currentWave * 18);
   enemyList.push({
     x, y, w: 64, h: 44,
-    fireTimer:    Math.floor(random(fi)),
-    fireInterval: fi + Math.floor(random(-20, 20))
+    fireTimer:    Math.floor(random(fi)),       // bullets dont synch up, fire in random intervals 
+    fireInterval: fi + Math.floor(random(-20, 20)) 
   });
 }
 
+//enemy shooting and movement 
 function moveEnemiesAndShoot() {
   let enemySpeed = 0.5 + currentWave * 0.3;
 
@@ -356,6 +374,7 @@ function moveEnemiesAndShoot() {
     }
   }
 }
+// bullets
 
 function moveBullets() {
   noStroke();
@@ -378,6 +397,7 @@ function moveBullets() {
   }
 }
 
+// bomb tool you can fire
 function useBomb() {
   if (bombCount <= 0 || activeBomb !== null) return;
   bombCount--;
@@ -423,10 +443,13 @@ function updateBomb() {
   }
 }
 
+// bullet collisions 
+
 function checkCollisions() {
   for (let bi = playerBullets.length - 1; bi >= 0; bi--) {
     let b = playerBullets[bi];
 
+    // bullet vs boss (boss health)
     if (boss && rectOverlap(b, boss)) {
       playerBullets.splice(bi, 1);
       boss.hp--;
@@ -436,6 +459,7 @@ function checkCollisions() {
         createExplosion(boss.x - 25, boss.y - 18);
         createExplosion(boss.x + 25, boss.y + 18);
         score += 500 + currentWave * 10;
+        // boss guarenteed to drop powerup
         let drops = ["shield", "ammo", "rapidfire"];
         powerups.push({ x: boss.x, y: boss.y, type: drops[Math.floor(random(3))], w: 24, h: 24 });
         boss = null;
@@ -443,6 +467,7 @@ function checkCollisions() {
       continue;
     }
 
+    // what happenes when a bullet hits an enemy
     for (let ei = enemyList.length - 1; ei >= 0; ei--) {
       let e = enemyList[ei];
       if (rectOverlap(b, e)) {
@@ -474,7 +499,6 @@ function rectOverlap(a, b) {
   );
 }
 
-
 function checkShieldDepleted() {
   if (shieldHP <= 0) {
     if (score > highScore) {
@@ -484,6 +508,8 @@ function checkShieldDepleted() {
     gameState = "over";
   }
 }
+
+// explosions
 
 function createExplosion(x, y) {
   for (let i = 0; i < 8; i++) {
@@ -515,6 +541,9 @@ function updateAndDrawExplosions() {
   }
 }
 
+
+// HUD with score, wave, ammo
+
 function drawHUD() {
   push();
   fill(255, 255, 255);
@@ -540,6 +569,7 @@ function drawHUD() {
   pop();
 }
 
+// boss
 function spawnBoss() {
   let hp = 4 + Math.floor(currentWave / 5);
   boss = {
@@ -580,6 +610,7 @@ function updateBoss() {
   let bx = boss.x;
   let by = boss.y;
 
+  // HP bar
   let barW = 90;
   let barX = bx - barW / 2;
   let barY = by - 62;
@@ -594,9 +625,11 @@ function updateBoss() {
   c.save();
   c.translate(bx, by);
 
+  // red glow
   c.shadowColor = 'red';
   c.shadowBlur  = boss.hitFlash > 0 ? 45 : 22;
 
+  // main body
   c.fillStyle = boss.hitFlash > 0 ? 'rgb(255,130,130)' : 'rgb(150,15,15)';
   c.beginPath();
   c.moveTo(-55,  0);
@@ -605,28 +638,33 @@ function updateBoss() {
   c.lineTo( 22,  34); c.lineTo(-32,  28);
   c.closePath();
   c.fill();
+
   c.shadowBlur = 0;
+
+  // spikes on sprites
   c.fillStyle = 'rgb(200,30,30)';
   c.beginPath(); c.moveTo(18,-34); c.lineTo(28,-54); c.lineTo(8,-34); c.closePath(); c.fill();
   c.beginPath(); c.moveTo(18, 34); c.lineTo(28, 54); c.lineTo(8, 34); c.closePath(); c.fill();
 
+  // Engine core
   c.fillStyle = 'rgb(70,0,0)';
   c.beginPath(); c.ellipse(14, 0, 22, 16, 0, 0, Math.PI*2); c.fill();
 
+  // reactor — flashes white on hit
   c.fillStyle = boss.hitFlash > 0 ? 'rgb(255,255,255)' : 'rgb(255,180,0)';
   c.beginPath(); c.ellipse(14, 0, 12, 9, 0, 0, Math.PI*2); c.fill();
-
   c.restore();
 
   if (boss.hitFlash > 0) boss.hitFlash--;
 }
 
+//powerups
 function tryDropPowerup(x, y) {
   let r = random(1);
-  if      (r < 0.01) powerups.push({ x, y, type: "bomb",      w: 24, h: 24 });
-  else if (r < 0.06) powerups.push({ x, y, type: "shield",    w: 24, h: 24 });
-  else if (r < 0.16) powerups.push({ x, y, type: "ammo",      w: 24, h: 24 });
-  else if (r < 0.26) powerups.push({ x, y, type: "rapidfire", w: 24, h: 24 });
+  if      (r < 0.01) powerups.push({ x, y, type: "bomb",      w: 24, h: 24 });  // 1%
+  else if (r < 0.06) powerups.push({ x, y, type: "shield",    w: 24, h: 24 });  // 5%
+  else if (r < 0.16) powerups.push({ x, y, type: "ammo",      w: 24, h: 24 });  // 10%
+  else if (r < 0.26) powerups.push({ x, y, type: "rapidfire", w: 24, h: 24 });  // 10%
 }
 
 function applyPowerup(type) {
@@ -649,19 +687,21 @@ function updateAndDrawPowerups() {
       continue;
     }
 
+  //glow halo and icon for powerups
     push();
     noStroke();
     if      (p.type === "shield")    fill(0,   210, 80,  90);
     else if (p.type === "ammo")      fill(255, 220, 0,   90);
     else if (p.type === "rapidfire") fill(255, 50,  50,  90);
-    else                             fill(160, 100, 30,  90);
+    else                             fill(160, 100, 30,  90);  // bomb — amber
     circle(p.x, p.y, 30);
 
+    // icon for powerups
     textAlign(CENTER);
     textSize(17);
     fill(255, 255, 255);
-    let icon = p.type === "shield"    ? "♥"
-             : p.type === "ammo"      ? "⚡"
+    let icon = p.type === "shield" ? "♥"
+             : p.type === "ammo"   ? "⚡"
              : p.type === "rapidfire" ? "🔥"
              : "💣";
     text(icon, p.x, p.y + 6);
@@ -669,6 +709,7 @@ function updateAndDrawPowerups() {
   }
 }
 
+// boarder glow
 function updateBorderColor() {
   let wc      = waveColors[Math.min(currentWave - 1, waveColors.length - 1)];
   let wrapper = document.getElementById("game-wrapper");
@@ -678,12 +719,14 @@ function updateBorderColor() {
     `0 0 18px ${wc.glow}, 0 0 55px ${wc.glow}66, inset 0 0 18px ${wc.glow}22`;
 }
 
+//user input
 function keyPressed() {
   pressedKeys[key] = true;
 
   if ((key === "b" || key === "B") && gameState === "play") {
     useBomb();
   }
+
   if (key === "Enter") {
     if (gameState === "title") {
       gameState = "play";
@@ -731,14 +774,17 @@ function mousePressed() {
   }
 }
 
+// How to play screen
 function showHowToScreen() {
   push();
 
+  // background panel
   noStroke();
   fill(0, 0, 0, 155);
   rectMode(CORNER);
   rect(25, 25, width - 50, height - 50);
 
+  // title
   fill(255, 255, 80);
   textAlign(CENTER);
   textSize(28);
@@ -750,6 +796,7 @@ function showHowToScreen() {
 
   textAlign(LEFT);
 
+  // goal
   fill(100, 220, 255);
   textSize(15);
   text("GOAL", x, y);
@@ -758,12 +805,12 @@ function showHowToScreen() {
   fill(210, 210, 210);
   textSize(12);
   text("Destroy enemy ships and survive as many waves as possible.", x, y);              y += lh;
-  text("Your ammo refills slowly, don't overshoot or you'll run dry.", x, y);           y += lh;
+  text("Your ammo refills slowly — don't overshoot or you'll run dry.", x, y);           y += lh;
   text("Every 5 waves a boss spawns. Defeat it to keep going.", x, y);                   y += lh;
-  text("Don't let any enemy ship reach the left side. Each one costs a shield life!", x, y);
+  text("Don't let any enemy ship reach the left side — each one costs a shield life!", x, y);
   y += lh + 14;
 
-  fill(100, 220, 255);
+  // conbtrols
   textSize(15);
   text("CONTROLS", x, y);
   y += lh + 3;
@@ -775,6 +822,7 @@ function showHowToScreen() {
   text("B                   —  Launch a bomb that destroys all enemies on screen", x, y);
   y += lh + 14;
 
+  // powerups
   fill(100, 220, 255);
   textSize(15);
   text("POWER-UPS  (random drops from destroyed enemies)", x, y);
@@ -782,10 +830,10 @@ function showHowToScreen() {
 
   fill(210, 210, 210);
   textSize(12);
-  text("♥   Shield restore", x, y);                    y += lh;
-  text("⚡   Ammo refill", x, y);              y += lh;
-  text("🔥   Rapid fire", x, y);         y += lh;
-  text("💣   Extra bomb", x, y);
+  text("♥   Shield restore  (5%)", x, y);                    y += lh;
+  text("⚡   Ammo refill  (10%)", x, y);              y += lh;
+  text("🔥   Rapid fire  (10%)", x, y);         y += lh;
+  text("💣   Extra bomb  (1%)", x, y);
 
   fill(160, 255, 160);
   textAlign(CENTER);
